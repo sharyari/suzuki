@@ -1,0 +1,216 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{fullpage}
+\usepackage[british]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc} 
+\usepackage{amsthm} \newtheorem{theorem}{Theorem}
+\usepackage{color}
+\usepackage{float}
+
+\usepackage{caption}
+\DeclareCaptionFont{white}{\color{white}}
+\DeclareCaptionFormat{listing}{\colorbox{gray}{\parbox{\textwidth}{#1#2#3}}}
+\captionsetup[lstlisting]{format=listing,labelfont=white,textfont=white}
+
+
+\usepackage{alltt}
+\usepackage{listings}
+ \usepackage{aeguill} 
+\usepackage{dsfont}
+%\usepackage{algorithm}
+\usepackage[noend]{algorithm2e}
+%\usepackage{algorithmicx}
+\usepackage{subfig}
+\lstset{% parameters for all code listings
+	language=Python,
+	frame=single,
+	basicstyle=\small,  % nothing smaller than \footnotesize, please
+	tabsize=2,
+	numbers=left,
+	framexleftmargin=2em,  % extend frame to include line numbers
+	%xrightmargin=2em,  % extra space to fit 79 characters
+	breaklines=true,
+	breakatwhitespace=true,
+	prebreak={/},
+	captionpos=b,
+	columns=fullflexible,
+	escapeinside={\#*}{\^^M}
+}
+
+
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
+\DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
+
+\usepackage{tikz} \usetikzlibrary{trees}
+\usepackage{hyperref}  % should always be the last package
+
+% useful colours (use sparingly!):
+\newcommand{\blue}[1]{{\color{blue}#1}}
+\newcommand{\green}[1]{{\color{green}#1}}
+\newcommand{\red}[1]{{\color{red}#1}}
+
+% useful wrappers for algorithmic/Python notation:
+\newcommand{\length}[1]{\text{len}(#1)}
+\newcommand{\twodots}{\mathinner{\ldotp\ldotp}}  % taken from clrscode3e.sty
+\newcommand{\Oh}[1]{\mathcal{O}\left(#1\right)}
+
+% useful (wrappers for) math symbols:
+\newcommand{\Cardinality}[1]{\left\lvert#1\right\rvert}
+%\newcommand{\Cardinality}[1]{\##1}
+\newcommand{\Ceiling}[1]{\left\lceil#1\right\rceil}
+\newcommand{\Floor}[1]{\left\lfloor#1\right\rfloor}
+\newcommand{\Iff}{\Leftrightarrow}
+\newcommand{\Implies}{\Rightarrow}
+\newcommand{\Intersect}{\cap}
+\newcommand{\Sequence}[1]{\left[#1\right]}
+\newcommand{\Set}[1]{\left\{#1\right\}}
+\newcommand{\SetComp}[2]{\Set{#1\SuchThat#2}}
+\newcommand{\SuchThat}{\mid}
+\newcommand{\Tuple}[1]{\langle#1\rangle}
+\newcommand{\Union}{\cup}
+\usetikzlibrary{positioning,shapes,shadows,arrows}
+
+
+\title{\textbf{Separation of Voronoi Areas}}
+
+\author{Jonathan Sharyari}  % replace by your name(s)
+
+%\date{Month Day, Year}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{figure}
+\section*{\large Abstract}
+In 1985, Suzuki and Kazami presented a distributed algorithm for mutual exclusion. In this paper (?), the claim of mutual exclusion, deadlock and starvation freedom are tested using model checking techniques. The conclusion...
+\end{figure}
+\newpage
+
+\section{Introduction}
+\subsection{Suzuki and Kazami's algorithm}
+
+The algorithm works as follows. Each of the N computer nodes, between which mutual exclusion is to be realized, runs two processes P1 and P2.
+Each node has two local arrays RN and LN of size N, and a queue Q. The array RN holds the latest received request identifier for each other node. Similarly, LN holds the request identifier of the latest carried out request of all the other nodes, of which the node has been informed. Since this is a distributed algorithm, these local arrays RN and LN are not the same for each node, since they are not always up-to-date . One reason is that this would require more message exchanges, but also that the messages are asynchronously received (??).
+The local queue Q holds the nodes that are currently requesting the privilege, in the order the requests have been received (first come, first serve ??).
+
+When a node $node_i$ wants to enter its critical section, it first need to have the privilege to do so. In case the node already holds the privilige, it enters the critical section directly, otherwise a REQUEST (i, n) is sent to all nodes excluding itself, where i is the nodes identifier (index) and n is the request identifier, which is increased by one for each sent request.
+
+Each node has a process P2 which receives the REQUEST(i,n) message from $node_i$. The array RN is updated, so that the corresponding entry RN[i] is set to n. If the node currently holding the privilege is not itself waiting for the privilege, it will forward the privilege to $node_i$ by sending a PRIVILEGE(Q, LN) message.
+
+When $node_i$ receives a PRIVILEGE message, it can continue to carry out its critical work. When it is done, it updates its queue by appending all the nodes requesting, that are not already in the queue. Then, a PRIVILEGE is sent to the node first in Q, and that node is removed from the queue.
+
+\section{Problem formulation}
+
+\section{Background}
+
+\section{Algorithms}
+
+\subsection{General outline}
+
+\section{Results}
+
+
+\section{Discussion}
+
+
+
+\section{references}
+\small
+\begin{enumerate}
+\item
+\label{ref:cgal}
+Ron Wein, Efi Fogel, Baruch Zukerman, and Dan Halperin
+
+CGAL manual chapter 20, 2D Arrangements
+
+http://www.cgal.org/Manual/3.3/doc\_html/cgal\_manual/Arrangement\_2/Chapter\_main.html
+
+\item
+\label{ref:blocking}
+O. Aichholzer, R. Fabila-Monroy, T. Hackl, M. van Kreveld, A. Pilz, P. Ramos, und B. Vogtenhuber
+
+Blocking Delaunay Triangulations. 
+
+Proc. Canadian Conference on Computational Geometry, CCCG 2010, Winnipeg, August 9/11, 2010. 
+
+\end{enumerate}
+\subsection{images}
+\begin{itemize}
+\item
+Delaunay circumcircles, GNU Free Documenation Licence, N\"u es
+
+http://commons.wikimedia.org/wiki/File:Delaunay\_circumcircles.png
+
+\item
+Delaunay triangulation 1-3, public domain, user Capheiden 
+
+http://upload.wikimedia.org/wikipedia/de/1/17/Voronoi-Delaunay.svg
+
+http://upload.wikimedia.org/wikipedia/de/4/48/Voronoi-Diagramm.svg
+
+http://upload.wikimedia.org/wikipedia/commons/1/1f/Delaunay-Triangulation.svg
+\end{itemize}
+
+\newpage
+\section{Appendix A}
+\begin{lstlisting}[label=some-code,caption=Suzuki and Kazami's algorithm]
+const I: Integer;		(* the identifier of this node *)
+	var HavePrivilege, Requesting:		bool;
+	j, n:	 	integer;
+	Q: 		queue of integer;
+	RN, LN: 	array[l . . N] of integer;
+
+	(* The initial values of the variables are:
+	HavePrivilege = true in node 1, false in all other nodes;
+	Requesting = false;
+	Q = empty;
+	RN[j] = -1, j = 1,2, . . . , N;
+	LN[j] = -1, j = 1,2,. . . , N; *)
+
+	procedure Pl;
+	begin
+		Requesting := true;
+		if not HavePrivilege then
+		begin
+			RN[I] := RN[Z] + 1;
+			for all j in 11, 2, . . . , NJ - {Z) do
+				Send REQUEST(1, RN[I]) to node j;
+			Wait until PRIVILEGE(Q, LN) is received;
+			HavePrivilege := true
+		end,
+	
+		Critical Section;
+
+		LN[Z] := RN[Z];
+		for all j in 11, 2, . . . , N) - [I) do
+			if not in(Q, j) and (RN[jJ = LN[j] + 1) then
+				Q := append(Q, j);
+		if Q f empty then
+		begin
+			HavePrivilege := false;
+			Send PRIVILEGE(tail(Q), LN) to node head(Q)
+		end;
+		Requesting := false
+	end,
+
+	procedure P2; (* REQUEST(j,n) is received; P2 is indivisible *)
+	begin
+		RN[j] := max(RN[j],n);
+		if HavePrivilege and not Requesting and (RN[j] = LN[j] + 1) then
+		begin
+			HavePrivilege := false;
+			Send PRIVILEGE(Q, LN) to node j
+		end
+	end,
+
+\end{lstlisting}
+
+
+\end{document}
+
