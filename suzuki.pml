@@ -3,7 +3,7 @@
 #define _nempty(_ch) (len(_ch) != 0)
 
 typedef Arraychan {
-  chan ch = [N] of {short};
+  chan ch = [60] of {short};
 }
 
 typedef ArrayArray{
@@ -11,7 +11,7 @@ typedef ArrayArray{
 }
 
 // This is incremented when entering critical section, and decremented when exiting. Debugging purposes
-byte critical;
+short critical;
 
 ArrayArray RN[N]; // "local" copies of RN and LN, have to be visible for both P1 and P2
 ArrayArray LN[N]
@@ -19,7 +19,7 @@ bool havePrivilege[N]; // True when ones own is set to true. Only someone with p
 short r,s;  // For looping and such
 bool requesting[N]; //True when a process is requesting
 Arraychan Q[N]; // Everyone has a local queue
-chan gQ = [N] of {short}; // This global channel is for sending privileges 
+chan gQ = [60] of {short}; // This global channel is for sending privileges 
 
 Arraychan inReq[N]; // These two come in pairs. A REQUEST is sent by adding the index here 
 Arraychan inNum[N]; // and adding the REQUEST-ID here
@@ -30,7 +30,7 @@ proctype P1(short i){
   short c=0;
   short length=0;
   do
-    :: 1 ->
+    :: true ->
        requesting[i] = true;
        if
 	 :: !(havePrivilege[i]) ->
@@ -49,8 +49,8 @@ proctype P1(short i){
 	    }
 	    if
 	      :: havePrivilege[i] ->
-		 atomic {
 		   length = len (gQ);
+		 atomic {
 		   do
 		     :: length > 0 ->
 			gQ?c;
@@ -75,8 +75,7 @@ proctype P1(short i){
 	    skip;
        fi;
 crit:
-       critical++;
-       critical--;
+
 exit:  
        d_step{
 	 LN[i].ind[i] = RN[i].ind[i];
@@ -100,11 +99,7 @@ exit:
 	 :: empty(Q[i].ch) ->
 	    skip;
 	 :: nempty(Q[i].ch) ->
-	    Q[i].ch?c;
-	    d_step{
-	      havePrivilege[i] = false; // Is it dangerous?
-	      havePrivilege[c] = true;
-	    }
+	    Q[i].ch?r;
 	    length = len (Q[i].ch);
 	    do
 	      :: length > 0 ->
@@ -125,9 +120,14 @@ exit:
 		   break;
 	      od;
 	    }
+	    d_step{
+	      havePrivilege[i] = false;
+	      havePrivilege[r] = true;
+	    }
        fi;
        requesting[i] = false;
   od;
+
 }
 
 proctype P2(short i){
@@ -142,16 +142,17 @@ proctype P2(short i){
 	 inNum[i].ch?reqN;
 	 d_step{
 	   if
-	   :: (RN[i].ind[reqee] < reqN) ->
-	      RN[i].ind[reqee] = reqN;
-	   :: else ->
-	      skip;
+	     :: (RN[i].ind[reqee] < reqN) ->
+		RN[i].ind[reqee] = reqN;
+	     :: else ->
+		skip;
 	   fi;
 	 }
 	 if
 	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->	      
 	      length = len (Q[i].ch);
-	      atomic{ //Dangerous?
+	      atomic
+	      { //Dangerous?
 		do
 		  :: length > 0 ->
 		     Q[i].ch?c;
@@ -219,8 +220,8 @@ init {
 }
 
 ltl critSec{
-//  []<>(havePrivilege[0]) &&   []<>(havePrivilege[1]) &&  []<>(havePrivilege[2])
-  [](RN[0].ind[0] < 2)
+  []<>(havePrivilege[0]) //&&   []<>(havePrivilege[1]) &&  []<>(havePrivilege[2])
+//  []!(cr)
 }
 
 //ltl starvation {
