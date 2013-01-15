@@ -3,7 +3,11 @@
 #define _nempty(_ch) (len(_ch) != 0)
 
 typedef Arraychan {
-  chan ch = [60] of {short};
+  chan ch = [N] of {short};
+}
+
+typedef Reqchan{
+  chan ch = [N] of {short, short};
 }
 
 typedef ArrayArray{
@@ -19,10 +23,9 @@ bool havePrivilege[N]; // True when ones own is set to true. Only someone with p
 short r,s;  // For looping and such
 bool requesting[N]; //True when a process is requesting
 Arraychan Q[N]; // Everyone has a local queue
-chan gQ = [60] of {short}; // This global channel is for sending privileges 
+chan gQ = [N] of {short}; // This global channel is for sending privileges 
 
-Arraychan inReq[N]; // These two come in pairs. A REQUEST is sent by adding the index here 
-Arraychan inNum[N]; // and adding the REQUEST-ID here
+Reqchan req[N]; // These two come in pairs. A REQUEST is sent by adding the index here 
 
 short privLN[N]; // Second parameter in a privilege message
 
@@ -38,8 +41,7 @@ proctype P1(short i){
 	      RN[i].ind[i]++;
 	      do
 		:: c < N && c != i ->
-		   inReq[c].ch!i;
-		   inNum[c].ch!(RN[i].ind[i]);
+		   req[c].ch!i,(RN[i].ind[i]);
 		   c++;
 		:: c == i ->
 		   c++;
@@ -136,10 +138,9 @@ proctype P2(short i){
   short c=0;
   short length;
   do
-    :: nempty(inReq[i].ch) ->
+    :: nempty(req[i].ch) ->
        atomic {
-	 inReq[i].ch?reqee;
-	 inNum[i].ch?reqN;
+	 req[i].ch?reqee,reqN;
 	 d_step{
 	   if
 	     :: (RN[i].ind[reqee] < reqN) ->
