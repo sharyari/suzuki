@@ -25,6 +25,11 @@ bool requesting[N]; //True when a process is requesting
 Arraychan Q[N]; // Everyone has a local queue
 chan gQ = [N] of {short}; // This global channel is for sending privileges 
 
+chan test = [5] of {};
+
+
+bool inGQ[N];
+ArrayArray inQ[N];
 Reqchan req[N]; // These two come in pairs. A REQUEST is sent by adding the index here 
 
 short privLN[N]; // Second parameter in a privilege message
@@ -42,6 +47,7 @@ proctype P1(short i){
 	      do
 		:: c < N && c != i ->
 		   req[c].ch!i,(RN[i].ind[i]);
+		   assert(RN[i].ind[i] < 1);
 		   c++;
 		:: c == i ->
 		   c++;
@@ -51,13 +57,29 @@ proctype P1(short i){
 	    }
 	    if
 	      :: havePrivilege[i] ->
-		   length = len (gQ);
+		 critical++;
+		 do
+		   :: nempty(Q[i].ch) ->
+		      Q[i].ch?c;
+		   :: empty(Q[i].ch) ->
+		      skip;
+		 od;
+		 length = len (gQ);
 		 atomic {
 		   do
 		     :: length > 0 ->
 			gQ?c;
 			Q[i].ch!c;
 			length--;
+		     :: else ->
+			break;
+		   od;
+		 }
+		 c=0;
+		 d_step{
+		   do
+		     :: c < N ->
+			inQ[i].ind[c] = inGQ[c];
 		     :: else ->
 			break;
 		   od;
@@ -77,8 +99,6 @@ proctype P1(short i){
 	    skip;
        fi;
 crit:
-
-exit:  
        d_step{
 	 LN[i].ind[i] = RN[i].ind[i];
 	 c = 0;
@@ -88,8 +108,14 @@ exit:
 	    c++;
 	 :: c < N && c != i ->
 	    if
-	      :: (RN[i].ind[c] == LN[i].ind[c]+1) ->
-		 Q[i].ch!c;
+	      :: (RN[i].ind[c] > LN[i].ind[c]) ->
+		 if
+		   :: (!inQ[i].ind[c]) ->
+		      Q[i].ch!c;
+		      inQ[i].ind[c] = true;
+		   :: else ->
+		      skip;
+		 fi;
 	      :: else ->
 		 skip;
 	    fi;
@@ -102,6 +128,7 @@ exit:
 	    skip;
 	 :: nempty(Q[i].ch) ->
 	    Q[i].ch?r;
+	    inQ[i].ind[r] = false;
 	    length = len (Q[i].ch);
 	    do
 	      :: length > 0 ->
@@ -112,6 +139,15 @@ exit:
 	      :: else ->
 		 break;
 	    od;
+	    c=0;
+	    d_step{
+	      do
+		:: c < N ->
+		   inGQ[c] = inQ[i].ind[c];
+		:: else ->
+		   break;
+	      od;
+	    }
 	    c=0;
 	    d_step{
 	      do
@@ -150,7 +186,7 @@ proctype P2(short i){
 	   fi;
 	 }
 	 if
-	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->	      
+	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] > LN[i].ind[reqee] ->	      
 	      length = len (Q[i].ch);
 	      atomic
 	      { //Dangerous?
@@ -164,7 +200,15 @@ proctype P2(short i){
 		     break;
 		od;
 	      }
-	      
+	      c=0;
+	      d_step{
+		do
+		  :: c < N ->
+		     inGQ[c] = inQ[i].ind[c];
+		  :: else ->
+		     break;
+		od;
+	      }
 	      c = 0;
 	      d_step{
 		do
@@ -221,8 +265,8 @@ init {
 }
 
 ltl critSec{
-  []<>(havePrivilege[0]) //&&   []<>(havePrivilege[1]) &&  []<>(havePrivilege[2])
-//  []!(cr)
+//  []<>(havePrivilege[2]) &&   []<>(havePrivilege[1]) //&&  []<>(havePrivilege[2])
+  [](critical  < 5)
 }
 
 //ltl starvation {

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-spin -a suzuki.pml
+spin -a suzuki2.pml
 cc -DSAFETY -DVECTORSZ=4096 -DMEMLIM=900 -o pan pan.c
 ./pan -m10000000
 
