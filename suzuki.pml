@@ -266,7 +266,7 @@ init {
 
 ltl critSec{
 //  []<>(havePrivilege[2]) &&   []<>(havePrivilege[1]) //&&  []<>(havePrivilege[2])
-  [](critical  < 5)
+  [](critical  < 100)
 }
 
 //ltl starvation {

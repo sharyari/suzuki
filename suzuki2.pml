@@ -1,4 +1,4 @@
-#define N 4
+#define N 3
 #define _empty(_ch) (len(_ch) == 0)
 #define _nempty(_ch) (len(_ch) != 0)
 
@@ -23,13 +23,11 @@ typedef PRIVILEGE {
   chan ch = [N] of {Queue, Array};
 }
 
-
+byte r=0;
 Array RN[N]; // "local" copies of RN and LN, have to be visible for both P1 and P2
 Array LN[N];
 bool havePrivilege[N]; // True when ones own is set to true. Only someone with privilege alters this
 bool requesting[N]; //True when a process is requesting
-
-byte critical;
 
 Queue Q[N];
 
@@ -69,13 +67,11 @@ proctype P1(byte i){
 	    fi;
   fi;
 
-crit:
-       critical++;
-       
+crit:  
        d_step{
+	 r++;
 	 LN[i].ind[i] = RN[i].ind[i];
 	 c=0;
-       
        do
 	 :: else ->
 	    break;
@@ -93,21 +89,21 @@ crit:
 	    c++;
        od;
 
-       critical--;
-
+       r--;
 
 	 if
 	   :: nempty(Q[i].ch) ->
 	      Q[i].ch?c;
-	      priv.ch!Q[i], LN[i];
 	      Q[i].inQ[c]=false;
+	      priv.ch!Q[i], LN[i];
 	      havePrivilege[i] = false;
 	      havePrivilege[c] = true;
 	   :: empty(Q[i].ch) ->
 	      skip;
 	 fi;
-	 requesting[i] = false;
        }
+	 requesting[i] = false;
+
   od;
 }
 
@@ -115,19 +111,21 @@ proctype P2(byte i){
   byte reqee;
   byte reqN;
   byte c=0;
-  do
+  
+  do    
     :: nempty(req[i].ch) ->
        d_step {
 	 req[i].ch?reqee,reqN;
-	   if
-	     :: RN[i].ind[reqee] < reqN ->
-		RN[i].ind[reqee] = reqN;
-	     :: else ->
-		skip;		
-	   fi;
-
+	 if
+	   :: RN[i].ind[reqee] < reqN ->
+	      RN[i].ind[reqee] = reqN;
+	   :: else ->
+	      skip;		
+	 fi;
+	 
 	 if
 	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->
+//	   :: havePrivilege[i] && !(P1[0]@notreq) && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->
 	      priv.ch!Q[i], LN[i];
 	      havePrivilege[i]=false;
 	      havePrivilege[reqee]=true;
@@ -140,7 +138,6 @@ proctype P2(byte i){
 
 init {
   havePrivilege[0]=true;
-  byte r=0;
   atomic{
     do
       :: r < N ->
@@ -149,10 +146,13 @@ init {
 	 r++;
       :: else -> break;
     od;
+    r=0;
   }
 }
 
 ltl critSec{
 //  []<>(havePrivilege[1]) &&   []<>(havePrivilege[0]) //&&  []<>(havePrivilege[2])
-  []!(RN[0].ind[0] > 50 && RN[0].ind[3] > 5)
+  []<>(RN[0].ind[0] > 2 && RN[0].ind[1] > 2)// && RN[0].ind[2] > 2)
+//  []<> P1@crit
+//  [] (critical < 2)
 }
