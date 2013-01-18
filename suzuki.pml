@@ -3,224 +3,134 @@
 #define _nempty(_ch) (len(_ch) != 0)
 
 typedef Arraychan {
-  chan ch = [N] of {short};
+  chan ch = [N] of {byte};
 }
 
-typedef Reqchan{
-  chan ch = [N] of {short, short};
+typedef REQUEST{
+  chan ch = [N] of {byte, byte};
 }
 
-typedef ArrayArray{
-  short ind[N];
+typedef Array{
+  byte ind[N];
 }
 
-// This is incremented when entering critical section, and decremented when exiting. Debugging purposes
-short critical;
+typedef Queue {
+  chan ch = [N] of {byte};
+  bool inQ[N];
+}
 
-ArrayArray RN[N]; // "local" copies of RN and LN, have to be visible for both P1 and P2
-ArrayArray LN[N]
+typedef PRIVILEGE {
+  chan ch = [N] of {Queue, Array};
+}
+
+hidden byte r=0;
+Array RN[N]; // "local" copies of RN and LN, have to be visible for both P1 and P2
+Array LN[N];
 bool havePrivilege[N]; // True when ones own is set to true. Only someone with privilege alters this
-short r,s;  // For looping and such
 bool requesting[N]; //True when a process is requesting
-Arraychan Q[N]; // Everyone has a local queue
-chan gQ = [N] of {short}; // This global channel is for sending privileges 
 
-chan test = [5] of {};
+byte counter;
+
+Queue Q[N];
+
+PRIVILEGE priv;
+REQUEST req[N];
 
 
-bool inGQ[N];
-ArrayArray inQ[N];
-Reqchan req[N]; // These two come in pairs. A REQUEST is sent by adding the index here 
-
-short privLN[N]; // Second parameter in a privilege message
-
-proctype P1(short i){
-  short c=0;
-  short length=0;
+proctype P1(byte i){
+  byte c=0;
   do
-    :: true ->
-       requesting[i] = true;
+    :: 1 ->
+       d_step{
+	 c=0;
+	 requesting[i] = true;
+       }
        if
-	 :: !(havePrivilege[i]) ->
+	 :: havePrivilege[i] ->
+	    skip;	    
+	 :: else ->
 	    atomic {
 	      RN[i].ind[i]++;
 	      do
-		:: c < N && c != i ->
-		   req[c].ch!i,(RN[i].ind[i]);
-		   assert(RN[i].ind[i] < 1);
-		   c++;
-		:: c == i ->
-		   c++;
-		:: else ->
-		   break;
+	      :: else ->
+		 break;
+	      :: c == i ->
+		 c++;
+		 skip;
+	      :: c < N && c != i ->
+		 req[c].ch!i, RN[i].ind[i];
+		 c++;
 	      od;
 	    }
 	    if
 	      :: havePrivilege[i] ->
-		 critical++;
-		 do
-		   :: nempty(Q[i].ch) ->
-		      Q[i].ch?c;
-		   :: empty(Q[i].ch) ->
-		      skip;
-		 od;
-		 length = len (gQ);
-		 atomic {
-		   do
-		     :: length > 0 ->
-			gQ?c;
-			Q[i].ch!c;
-			length--;
-		     :: else ->
-			break;
-		   od;
-		 }
-		 c=0;
-		 d_step{
-		   do
-		     :: c < N ->
-			inQ[i].ind[c] = inGQ[c];
-		     :: else ->
-			break;
-		   od;
-		 }
-		 c=0;
-		 d_step{
-		   do
-		     :: c < N ->
-			LN[i].ind[c] = privLN[c];
-			c++;
-		     :: else ->
-			break;
-		   od; 
-		 }
+		 priv.ch?Q[i], LN[i];
 	    fi;
-	 :: (havePrivilege[i]) ->
-	    skip;
-       fi;
-crit:
+  fi;
+
+crit:  
        d_step{
+	 counter++;
 	 LN[i].ind[i] = RN[i].ind[i];
-	 c = 0;
-       }
+	 c=0;
        do
-	 :: c == i ->
-	    c++;
-	 :: c < N && c != i ->
-	    if
-	      :: (RN[i].ind[c] > LN[i].ind[c]) ->
-		 if
-		   :: (!inQ[i].ind[c]) ->
-		      Q[i].ch!c;
-		      inQ[i].ind[c] = true;
-		   :: else ->
-		      skip;
-		 fi;
-	      :: else ->
-		 skip;
-	    fi;
-	    c++;
 	 :: else ->
 	    break;
-       od;
-       if
-	 :: empty(Q[i].ch) ->
+	 :: c==i ->
+	    c++;
 	    skip;
-	 :: nempty(Q[i].ch) ->
-	    Q[i].ch?r;
-	    inQ[i].ind[r] = false;
-	    length = len (Q[i].ch);
-	    do
-	      :: length > 0 ->
-		 Q[i].ch?c;
-		 Q[i].ch!c;
-		 gQ!c;
-		 length--;
+	 :: c<N && c!=i ->
+	    if
 	      :: else ->
-		 break;
-	    od;
-	    c=0;
-	    d_step{
-	      do
-		:: c < N ->
-		   inGQ[c] = inQ[i].ind[c];
-		:: else ->
-		   break;
-	      od;
-	    }
-	    c=0;
-	    d_step{
-	      do
-		:: c < N ->
-		   privLN[c] = LN[i].ind[c];
-		   c++;
-		:: else ->
-		   break;
-	      od;
-	    }
-	    d_step{
+		 skip;
+	      :: !Q[i].inQ[c] && RN[i].ind[c] == LN[i].ind[c] + 1 ->
+		 Q[i].ch!c;
+		 Q[i].inQ[c]=true;
+	    fi;
+	    c++;
+       od;
+
+       counter--;
+
+	 if
+	   :: nempty(Q[i].ch) ->
+	      Q[i].ch?c;
+	      Q[i].inQ[c]=false;
+	      priv.ch!Q[i], LN[i];
 	      havePrivilege[i] = false;
-	      havePrivilege[r] = true;
-	    }
-       fi;
+	      havePrivilege[c] = true;
+	   :: empty(Q[i].ch) ->
+	      skip;
+	 fi;
+       }
        requesting[i] = false;
   od;
-
 }
 
-proctype P2(short i){
-  short reqee;
-  short reqN;
-  short c=0;
-  short length;
-  do
+proctype P2(byte i){
+  chan rreq = req[i].ch;
+  xr rreq;
+  byte reqee;
+  byte reqN;
+  byte c=0;
+  
+  do    
     :: nempty(req[i].ch) ->
-       atomic {
-	 req[i].ch?reqee,reqN;
-	 d_step{
-	   if
-	     :: (RN[i].ind[reqee] < reqN) ->
-		RN[i].ind[reqee] = reqN;
-	     :: else ->
-		skip;
-	   fi;
-	 }
+       d_step {
+	 rreq?reqee,reqN;
 	 if
-	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] > LN[i].ind[reqee] ->	      
-	      length = len (Q[i].ch);
-	      atomic
-	      { //Dangerous?
-		do
-		  :: length > 0 ->
-		     Q[i].ch?c;
-		     Q[i].ch!c;
-		     gQ!c;
-		     length--;
-		  :: else ->
-		     break;
-		od;
-	      }
-	      c=0;
-	      d_step{
-		do
-		  :: c < N ->
-		     inGQ[c] = inQ[i].ind[c];
-		  :: else ->
-		     break;
-		od;
-	      }
-	      c = 0;
-	      d_step{
-		do
-		  :: c < N ->
-		     privLN[c] = LN[i].ind[c];
-		     c++;
-		  :: else ->
-		     break;
-		od;
-		havePrivilege[i] = false;
-		havePrivilege[reqee] = true;
-	      }
+	   :: RN[i].ind[reqee] < reqN ->
+	      RN[i].ind[reqee] = reqN;
+	   :: else ->
+	      skip;		
+	 fi;
+
+	 if
+	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->
+//	   :: havePrivilege[i] && !(P1[0]@notreq) && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->
+	      priv.ch!Q[i], LN[i];
+	      havePrivilege[i]=false;
+	      havePrivilege[reqee]=true;
 	   :: else ->
 	      skip;
 	 fi;
@@ -229,30 +139,7 @@ proctype P2(short i){
 }
 
 init {
-  d_step {
-    critical=0;
-    r = 0;
-    s=0;
-    do
-      :: r < N ->
-	 do
-	   :: s < N ->
-	      RN[r].ind[s] = -1;
-	      LN[r].ind[s] = -1;
-	      s++;
-	   :: s == N ->
-	      s=0;
-	      r++;
-	      break;
-	 od;
-	 requesting[r-1]=false;
-	 havePrivilege[r-1]=false;
-      :: r == N ->
-	 r=0;
-	 break;
-    od;
-    havePrivilege[0]=true;
-  }
+  havePrivilege[0]=true;
   atomic{
     do
       :: r < N ->
@@ -261,14 +148,14 @@ init {
 	 r++;
       :: else -> break;
     od;
+    r=0;
   }
 }
 
 ltl critSec{
-//  []<>(havePrivilege[2]) &&   []<>(havePrivilege[1]) //&&  []<>(havePrivilege[2])
-  [](critical  < 100)
+  []<>(havePrivilege[1])// &&   []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
+//  []!(counter > 1)
+//  []<>(RN[0].ind[0] > 2 && RN[0].ind[1] > 2)// && RN[0].ind[2] > 2)
+//  []<> P1@crit
+//  [] (critical < 2)
 }
-
-//ltl starvation {
-  //  [](P2[0]reqN < 2)
-//}
