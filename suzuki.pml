@@ -153,9 +153,9 @@ init {
 }
 
 ltl critSec{
-  []<>(havePrivilege[1])// &&   []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
-//  []!(counter > 1)
-//  []<>(RN[0].ind[0] > 2 && RN[0].ind[1] > 2)// && RN[0].ind[2] > 2)
+//  []<>(havePrivilege[1])// &&   []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
+  []!(counter > 1)
+//  []!(RN[0].ind[0] == 1 && RN[0].ind[1] == 3)// && RN[0].ind[2] > 2)
 //  []<> P1@crit
 //  [] (critical < 2)
 }
