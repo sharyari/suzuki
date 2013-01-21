@@ -61,20 +61,22 @@ proctype P1(byte i){
 		 priv.ch?Q[i], LN[i];
 	    fi;
       fi;
-
+progress:
+       
 crit:  
        d_step{
 	 counter++; // debugging
 	 LN[i].ind[i] = RN[i].ind[i];
-	 if
-	   :: (RN[i].ind[i] == L-1) ->
-	      if
-		:: (replycount[i] == N-1) ->
-		   replycount[i] = 0;
-		:: else -> skip;
-	      fi;
-	   :: else -> skip;
-	 fi;
+       }	 
+       if
+	 :: (RN[i].ind[i] == L-1) ->
+	    if
+	      :: (replycount[i] == N-1) ->
+		 replycount[i] = 0;
+	    fi;
+	 :: else -> skip;
+       fi;
+       d_step {
 	 c=0;
 	 do
 	   :: else -> counter--;break;
@@ -120,11 +122,17 @@ proctype P2(byte i){
 	   :: else -> skip;
 	 fi;
 	 if
-	   :: RN[i].ind[reqee] < reqN || requestcount[reqee] == 1 ->
+	   :: requestcount[reqee] == 1 ->
 	      RN[i].ind[reqee] = reqN;
 	   :: else ->
-	      skip;		
+	      if
+		:: RN[i].ind[reqee] < reqN ->
+		   RN[i].ind[reqee] = reqN;
+		:: else ->
+		   skip;
+	      fi;
 	 fi;
+
 	 if
 	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == (LN[i].ind[reqee]+1) % L ->
 	      priv.ch!Q[i], LN[i];
@@ -144,7 +152,7 @@ proctype P3(short i){
   do
     :: nempty(rreply) ->
        d_step{
-	 reply[i]?trash;
+	 rreply?trash;
 	 replycount[i]++;
        }
   od;
@@ -182,10 +190,10 @@ init {
 end: 
 }
 
-ltl critSec{
-//  []<>(havePrivilege[1])// &&   []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
-  [](counter < 2)
+//ltl critSec{
+//  []<>(havePrivilege[1]) &&   []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
+//  [](counter < 2)
 //  []<>(RN[0].ind[0] > 2 && RN[0].ind[1] > 2)// && RN[0].ind[2] > 2)
 //  []<> P1@crit
 //  [] (critical < 2)
-}
+//}

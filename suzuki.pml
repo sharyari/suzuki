@@ -28,7 +28,6 @@ Array RN[N]; // "local" copies of RN and LN, have to be visible for both P1 and 
 Array LN[N];
 bool havePrivilege[N]; // True when ones own is set to true. Only someone with privilege alters this
 bool requesting[N]; //True when a process is requesting
-
 byte counter;
 
 Queue Q[N];
@@ -36,62 +35,50 @@ Queue Q[N];
 PRIVILEGE priv;
 REQUEST req[N];
 
-
 proctype P1(byte i){
   byte c=0;
   do
-    :: 1 ->
+    :: 1 -> // RN[i].ind[i] < 2 ->
        d_step{
-	 c=0;
-	 requesting[i] = true;
+	 requesting[i] = true; c=0;
        }
        if
-	 :: havePrivilege[i] ->
-	    skip;	    
+	 :: havePrivilege[i] ->	skip;	    
 	 :: else ->
 	    atomic {
 	      RN[i].ind[i]++;
 	      do
-	      :: else ->
-		 break;
-	      :: c == i ->
-		 c++;
-		 skip;
+	      :: else -> break;
+		:: c == i -> c++; skip;
 	      :: c < N && c != i ->
-		 req[c].ch!i, RN[i].ind[i];
-		 c++;
+		 req[c].ch!i, RN[i].ind[i]; c++;
 	      od;
 	    }
 	    if
 	      :: havePrivilege[i] ->
 		 priv.ch?Q[i], LN[i];
 	    fi;
-  fi;
-
-crit:  
+       fi;
+       
+progress:
        d_step{
-	 counter++;
+	 counter++;c=0;
 	 LN[i].ind[i] = RN[i].ind[i];
-	 c=0;
+
        do
-	 :: else ->
-	    break;
-	 :: c==i ->
-	    c++;
-	    skip;
+	 :: else -> break;
+	 :: c==i -> c++; skip;
 	 :: c<N && c!=i ->
 	    if
-	      :: else ->
-		 skip;
+	      :: else -> skip;
 	      :: !Q[i].inQ[c] && RN[i].ind[c] == LN[i].ind[c] + 1 ->
 		 Q[i].ch!c;
 		 Q[i].inQ[c]=true;
-	    fi;
-	    c++;
-       od;
-
-       counter--;
-
+	    fi; c++;
+	 od;
+	 
+	 counter--;
+	 
 	 if
 	   :: nempty(Q[i].ch) ->
 	      Q[i].ch?c;
@@ -99,12 +86,13 @@ crit:
 	      priv.ch!Q[i], LN[i];
 	      havePrivilege[i] = false;
 	      havePrivilege[c] = true;
-	   :: empty(Q[i].ch) ->
-	      skip;
+	   :: empty(Q[i].ch) -> skip;
 	 fi;
        }
+
        requesting[i] = false;
   od;
+end:
 }
 
 proctype P2(byte i){
@@ -113,7 +101,7 @@ proctype P2(byte i){
   byte reqee;
   byte reqN;
   byte c=0;
-  
+end:
   do    
     :: nempty(req[i].ch) ->
        d_step {
@@ -121,18 +109,15 @@ proctype P2(byte i){
 	 if
 	   :: RN[i].ind[reqee] < reqN ->
 	      RN[i].ind[reqee] = reqN;
-	   :: else ->
-	      skip;		
+	   :: else -> skip;		
 	 fi;
 
 	 if
 	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->
-//	   :: havePrivilege[i] && !(P1[0]@notreq) && RN[i].ind[reqee] == LN[i].ind[reqee]+1 ->
 	      priv.ch!Q[i], LN[i];
 	      havePrivilege[i]=false;
 	      havePrivilege[reqee]=true;
-	   :: else ->
-	      skip;
+	   :: else -> skip;
 	 fi;
        }
   od;
@@ -153,9 +138,8 @@ init {
 }
 
 ltl critSec{
-//  []<>(havePrivilege[1])// &&   []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
-  []!(counter > 1)
-//  []!(RN[0].ind[0] == 1 && RN[0].ind[1] == 3)// && RN[0].ind[2] > 2)
-//  []<> P1@crit
-//  [] (critical < 2)
+//  []<>(havePrivilege[1]) &&  []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
+  [](RN[1].ind[1] < 10 -> <>havePrivilege[1])
+  //  []!(counter > 1)
+//  []!(RN[0].ind[0] == 5 && RN[1].ind[1] == 5)// && RN[0].ind[2] > 2)
 }

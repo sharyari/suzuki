@@ -1,6 +1,27 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #!/bin/bash
 
 spin -a suzuki.pml
-cc -DSAFETY -DCOLLAPSE -DVECTORSZ=4096 -DMEMLIM=900 -o pan pan.c
+cc -DSAFETY -DBITSTATE -DVECTORSZ=4096 -DMEMLIM=900 -o pan pan.c
 ./pan -m10000000
 
