@@ -75,7 +75,7 @@
 \usetikzlibrary{positioning,shapes,shadows,arrows}
 
 
-\title{\textbf{Separation of Voronoi Areas}}
+\title{\textbf{WHAT's THE TITLE?}}
 
 \author{Jonathan Sharyari}  % replace by your name(s)
 
@@ -88,26 +88,83 @@
 
 \begin{figure}
 \section*{\large Abstract}
-In 1985, Suzuki and Kazami presented a distributed algorithm for mutual exclusion. In this paper (?), the claim of mutual exclusion, deadlock and starvation freedom are tested using model checking techniques. The conclusion...
+In 1985, Suzuki and Kasami presented a distributed algorithm for mutual exclusion. In this paper (?), the claim of mutual exclusion, deadlock and starvation freedom are tested using model checking techniques. The conclusion...
 \end{figure}
 \newpage
 
 \section{Introduction}
-\subsection{Suzuki and Kazami's algorithm}
+SOME BULLSHIT
 
-The algorithm works as follows. Each of the N computer nodes, between which mutual exclusion is to be realized, runs two processes P1 and P2.
-Each node has two local arrays RN and LN of size N, and a queue Q. The array RN holds the latest received request identifier for each other node. Similarly, LN holds the request identifier of the latest carried out request of all the other nodes, of which the node has been informed. Since this is a distributed algorithm, these local arrays RN and LN are not the same for each node, since they are not always up-to-date . One reason is that this would require more message exchanges, but also that the messages are asynchronously received (??).
+
+\subsection{Principles of Model Checking}
+Model checking is the process of automatically verifying the correctness of a system description with respect to its specifications, by examining a model corresponding to the system. The result of model checking is in general a certificate of correctness, or a counterexample showing why the specifications are not met.
+
+\subsubsection{The Spin Model Checker}
+There are many tools for model checking available, with different approaches to model checking and with different strengths and weaknesses. The SPIN Model checker (typically written Spin) is a widely used tool for model checking distributed and concurrent systems. It uses a simple C-like modelling language (Promela) and performs model checking by generating C code, thus not only makes use of the efficient memory and speed optimizations available for C, but also allows for direct insertions of C-code to the model.
+
+SOMETHING ABOUT LTL CLAIMS -> BUCHI AUTOMATA -> BACK.... Read the book you lazy ass so-called science student.
+
+
+
+What is mutual exclusion, starvation freedom and so on. (Would that be expecting too little?)
+
+\section{Suzuki and Kasami's algorithm}
+
+The Suzuki/Kasami algorithm (from this point abbreviated SKA), is a distributed mutual exclusion-algorithm. (SOMETHING ABOUT THE NUMBER OF MESSAGES NEEDED, FOR N NODES)
+
+Each of the N computer nodes between which mutual exclusion is to be realized runs two processes P1 and P2. Each node has two local arrays RN and LN and a queue Q, all of which are accessible by P1 and P2.
+
+The array RN holds the latest received request identifier for each other node. Similarly, LN holds the request identifier of the latest carried out request of all the other nodes, of which the node has been notified. Since the algorithm is distributed, the local arrays RN and LN are not the same for each node, and for each node represent only the information of which the node has been informed.
 The local queue Q holds the nodes that are currently requesting the privilege, in the order the requests have been received (first come, first serve ??).
 
-When a node $node_i$ wants to enter its critical section, it first need to have the privilege to do so. In case the node already holds the privilige, it enters the critical section directly, otherwise a REQUEST (i, n) is sent to all nodes excluding itself, where i is the nodes identifier (index) and n is the request identifier, which is increased by one for each sent request.
+When a node $node_i$ wants to enter its critical section with its main process P, it needs to have the privilege to do so. In case the node already holds the privilege, it enters the critical section directly, without informing the other processes or updating the arrays RN and LN. Otherwise a REQUEST(i, n) message is sent to all other nodes, where i is the nodes identifier (index) and n is the request identifier.
 
-Each node has a process P2 which receives the REQUEST(i,n) message from $node_i$. The array RN is updated, so that the corresponding entry RN[i] is set to n. If the node currently holding the privilege is not itself waiting for the privilege, it will forward the privilege to $node_i$ by sending a PRIVILEGE(Q, LN) message.
+A requesting node will wait until it receives a PRIVILEGE message, before accessing its critical section. When it is done, it updates its queue by appending all the nodes requesting, that are not already in the queue. Then, a PRIVILEGE is sent to the node first in Q, and that node is removed from the queue.
 
-When $node_i$ receives a PRIVILEGE message, it can continue to carry out its critical work. When it is done, it updates its queue by appending all the nodes requesting, that are not already in the queue. Then, a PRIVILEGE is sent to the node first in Q, and that node is removed from the queue.
+In process P2 REQUEST(i,n) messages are received. The array RN is updated, so that the corresponding entry RN[i] is set to n. If the node currently holding the privilege is not itself waiting for the privilege, it will forward the privilege to $node_i$ by sending a PRIVILEGE(Q, LN) message.
+
+The pseudo-code proposed in the original paper is listed in \hyperref[sec:SKA]{Appendix A}.
 
 \section{Problem formulation}
+(NOTE THAT SK MUST BE DEFINED BEFORE THIS)
+The SK algorithm is claimed to guarantee mutual exclusion, starvation freedom and (ANYTHING ELSE?). The purpose of this project is to investigate these claims, using model checking techniques. Also (SOME BULLSHIT HERE).
 
-\section{Background}
+\section{Model of SKA in Promela}
+Promela is a modelling language with a relatively small set of predefined types and function. Because of this, a model of the pseudo code in \hyperref[sec:SKA]{Appendix A} must be implemented using the set of instructions available in promela.
+
+
+\subsection{Nodes}
+In the SKA algorithm, every node has two processes, and these processes have shared variables. This object oriented style requires different levels of variable access, i.e. variables that can be accessed by several processes (meaning it is not local), but not by all processes (meaning it is not global).
+
+Since no shared, but only global and local variables exist in promela, the model uses global variables. The global variables belong to a node, and must only be accessed by processes within that node. To ensure this, every node has a node identifier, and every process is passed this identifier as an argument. 
+
+The convention is, that for every shared variable, an array of those variables are created - one for each node. The $i$:th array cell belongs to node $i$, and is the only cell in the array that processes of node $i$ may access.
+
+As an example, consider the boolean variable \texttt{requesting} belonging to node $i$, which must be accessible both by function P1(i) and P2(i). In promela, an array \texttt{requesting[N]} is created, and the processes may only access the cell \texttt{requesting[i]}.
+
+\subsection{Queue}
+A queue data structure could be implemented in several ways in promela, naturally suited for different applications. We note that in the SKA algorithm, the key features of the queue is first that values are read \emph{first-in first-out} (FIFO) and second the ability to determine whether a certain value is already in the queue or not.
+
+The promela channel data type is a FIFO data structure, but it provides no means of determining if a value is already in the queue or not. To surmount this problem, a new \emph{Queue} data structure is defined;
+
+\begin{lstlisting}
+typedef Queue {
+  chan ch = [N] of {short};
+  bool inQ[N];
+}
+\end{lstlisting}
+
+This implementation draws upon the fact that a queue in this setting, needs at most store N values, since values may only be added if they are not already in the queue, and the range of numbers that are to be stored are the node indexes ranging from 0 to N-1.
+
+To add a new value $n$ to the queue, it must first be checked that the value is already in the queue (\texttt{inQ[n]} is false). Then the value is added to the channel \texttt{ch}, and \texttt{inQ[n]} be set to true.
+
+To remove the top value from the queue, the opposite is done. The value $n$ is read from the channel \texttt{ch}, and \texttt{inQ[n]} is set to false, indicating that the value $n$ is not in the queue.
+
+\subsection{Messages}
+
+
+\subsection{Event Handling}
+This part should explain why P2 is waiting in a "busy" loop. I.e., such functions are made to avoid busy loops -> loops are not busy in promela -> doesn't matter that we make busy loops.
 
 \section{Algorithms}
 
@@ -140,6 +197,9 @@ Blocking Delaunay Triangulations.
 Proc. Canadian Conference on Computational Geometry, CCCG 2010, Winnipeg, August 9/11, 2010. 
 
 \end{enumerate}
+
+
+
 \subsection{images}
 \begin{itemize}
 \item
@@ -157,8 +217,11 @@ http://upload.wikimedia.org/wikipedia/de/4/48/Voronoi-Diagramm.svg
 http://upload.wikimedia.org/wikipedia/commons/1/1f/Delaunay-Triangulation.svg
 \end{itemize}
 
+
+
 \newpage
-\section{Appendix A}
+\label{ref:SKA}
+
 \begin{lstlisting}[label=some-code,caption=Suzuki and Kazami's algorithm]
 const I: Integer;		(* the identifier of this node *)
 	var HavePrivilege, Requesting:		bool;
