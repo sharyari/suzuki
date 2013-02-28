@@ -1,0 +1,6 @@
+#!/bin/bash
+
+spin -a suzuki2.pml
+cc -DSAFETY -DMEMLIM=950 -o pan pan.c
+./pan -m2500000 
+

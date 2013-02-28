@@ -1,0 +1,6 @@
+#!/bin/bash
+
+spin -a suzuki2.pml
+cc -DMA=300 -DVECTORSZ=4096 -DMEMLIM=950 -DNFAIR=4 -o pan pan.c
+./pan -m10000000 -a -f
+
