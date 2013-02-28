@@ -29,6 +29,7 @@ Array LN[N];
 bool havePrivilege[N]; // True when ones own is set to true. Only someone with privilege alters this
 bool requesting[N]; //True when a process is requesting
 byte counter;
+bool live[N];
 
 Queue Q[N];
 
@@ -36,9 +37,10 @@ PRIVILEGE priv;
 REQUEST req[N];
 
 proctype P1(byte i){
+
   byte c=0;
   do
-    :: 1 -> // RN[i].ind[i] < 2 ->
+    :: 1 ->
        d_step{
 	 requesting[i] = true; c=0;
        }
@@ -61,6 +63,7 @@ proctype P1(byte i){
        fi;
        
 progress:
+       live[i]=true;
        d_step{
 	 counter++;c=0;
 	 LN[i].ind[i] = RN[i].ind[i];
@@ -78,7 +81,7 @@ progress:
 	 od;
 	 
 	 counter--;
-	 
+	 live[i]=false;
 	 if
 	   :: nempty(Q[i].ch) ->
 	      Q[i].ch?c;
@@ -102,6 +105,7 @@ proctype P2(byte i){
   byte reqN;
   byte c=0;
 end:
+	// This does not allow for messages to be received in another order than they were sent. This could be solved by randomely jumping over a message randomely, and put it in the end of the queue again.
   do    
     :: nempty(req[i].ch) ->
        d_step {
@@ -138,8 +142,10 @@ init {
 }
 
 ltl critSec{
-//  []<>(havePrivilege[1]) &&  []<>(havePrivilege[0]) &&  []<>(havePrivilege[2])
-  [](RN[1].ind[1] < 10 -> <>havePrivilege[1])
+  []!(live[1] && live[0])
+  //!([]<>live[1])
+  //  !([]<>(havePrivilege[1]) &&  []<>(havePrivilege[0]) &&  []<>(havePrivilege[2]))
+//  [](RN[1].ind[1] < 10 -> <>havePrivilege[1])
   //  []!(counter > 1)
 //  []!(RN[0].ind[0] == 5 && RN[1].ind[1] == 5)// && RN[0].ind[2] > 2)
 }

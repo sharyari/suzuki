@@ -10,6 +10,13 @@
 \usepackage{color}
 \usepackage{float}
 
+
+\usepackage{dot2texi}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+
+
+
 \usepackage{caption}
 \DeclareCaptionFont{white}{\color{white}}
 \DeclareCaptionFormat{listing}{\colorbox{gray}{\parbox{\textwidth}{#1#2#3}}}
@@ -93,29 +100,19 @@ In 1985, Suzuki and Kasami presented a distributed algorithm for mutual exclusio
 \newpage
 
 \section{Introduction}
-SOME BULLSHIT
-
-
-\subsection{Principles of Model Checking}
 Model checking is the process of automatically verifying the correctness of a system description with respect to its specifications, by examining a model corresponding to the system. The result of model checking is in general a certificate of correctness, or a counterexample showing why the specifications are not met.
 
-\subsubsection{The Spin Model Checker}
-There are many tools for model checking available, with different approaches to model checking and with different strengths and weaknesses. The SPIN Model checker (typically written Spin) is a widely used tool for model checking distributed and concurrent systems. It uses a simple C-like modelling language (Promela) and performs model checking by generating C code, thus not only makes use of the efficient memory and speed optimizations available for C, but also allows for direct insertions of C-code to the model.
-
-SOMETHING ABOUT LTL CLAIMS -> BUCHI AUTOMATA -> BACK.... Read the book you lazy ass so-called science student.
+There are many tools for model checking available, with different approaches to model checking and with different strengths and weaknesses. The SPIN Model checker (typically written Spin) is a widely used tool for model checking distributed and concurrent systems. The spin model checker was used mainly because both the tested pseudo code and the spin modelling language (promela) has a syntax close to that of C.
 
 
+\subsection{Suzuki and Kasami's Algorithm}
 
-What is mutual exclusion, starvation freedom and so on. (Would that be expecting too little?)
+The Suzuki/Kasami algorithm (henceforth abbreviated SKA), is a distributed mutual exclusion-algorithm that requires at most N message exchanges for every mutual exclusion invocation between N computer nodes.
 
-\section{Suzuki and Kasami's algorithm}
-
-The Suzuki/Kasami algorithm (from this point abbreviated SKA), is a distributed mutual exclusion-algorithm. (SOMETHING ABOUT THE NUMBER OF MESSAGES NEEDED, FOR N NODES)
-
-Each of the N computer nodes between which mutual exclusion is to be realized runs two processes P1 and P2. Each node has two local arrays RN and LN and a queue Q, all of which are accessible by P1 and P2.
+Each of the N nodes between which mutual exclusion is to be realized runs two processes P1 and P2. Each node has two local arrays RN and LN and a queue Q, all of which are accessible by P1 and P2.
 
 The array RN holds the latest received request identifier for each other node. Similarly, LN holds the request identifier of the latest carried out request of all the other nodes, of which the node has been notified. Since the algorithm is distributed, the local arrays RN and LN are not the same for each node, and for each node represent only the information of which the node has been informed.
-The local queue Q holds the nodes that are currently requesting the privilege, in the order the requests have been received (first come, first serve ??).
+The local queue Q holds the nodes that are currently requesting the privilege, in the order the requests have been received.
 
 When a node $node_i$ wants to enter its critical section with its main process P, it needs to have the privilege to do so. In case the node already holds the privilege, it enters the critical section directly, without informing the other processes or updating the arrays RN and LN. Otherwise a REQUEST(i, n) message is sent to all other nodes, where i is the nodes identifier (index) and n is the request identifier.
 
@@ -125,18 +122,21 @@ In process P2 REQUEST(i,n) messages are received. The array RN is updated, so th
 
 The pseudo-code proposed in the original paper is listed in \hyperref[sec:SKA]{Appendix A}.
 
-\section{Problem formulation}
-(NOTE THAT SK MUST BE DEFINED BEFORE THIS)
-The SK algorithm is claimed to guarantee mutual exclusion, starvation freedom and (ANYTHING ELSE?). The purpose of this project is to investigate these claims, using model checking techniques. Also (SOME BULLSHIT HERE).
+\subsection{Suzuki and Kasami's modified Algorithm}
+The SKA algorithm has the disadvantage of request identifier numbers being unbounded. In a modified version of the SKA algorithm (henceforth abbreviated SKAM), Suzuki and Kasami propose a slightly changes to the above algorithm in order to bound the request identifiers by a value L but with the cost of additional message exchanges.
 
-\section{Model of SKA in Promela}
+In the SKAM algorithm a third process P3 is added to each node, and a new message type REPLY. When a node $n_1$ receives a REQUEST with the request identifier L from node $n_3$, it will send a REPLY message back to the sending node and set RN[3] to 0. The process P3 receives the REPLY messages and increments the variable \texttt{replyCount} (local to the node). The idea is that when a node has finished its L:th critical section, it must wait until a REPLY message has been received from all other processes before it can give the privilege to the next process. The replies are thus a guarantee that all other processes have updated their RN-values to 0.
+
+
+\section{Problem formulation}
+The SKA/SKAM algorithms are claimed to guarantee mutual exclusion, starvation freedom and deadlock freedom. The purpose of this project is to investigate these claims and the additional property of being free from unnecessary delay, using model checking techniques. 
+
+\section{Model of SKA/SKAM in Promela}
 Promela is a modelling language with a relatively small set of predefined types and function. Because of this, a model of the pseudo code in \hyperref[sec:SKA]{Appendix A} must be implemented using the set of instructions available in promela.
 
 
 \subsection{Nodes}
-In the SKA algorithm, every node has two processes, and these processes have shared variables. This object oriented style requires different levels of variable access, i.e. variables that can be accessed by several processes (meaning it is not local), but not by all processes (meaning it is not global).
-
-Since no shared, but only global and local variables exist in promela, the model uses global variables. The global variables belong to a node, and must only be accessed by processes within that node. To ensure this, every node has a node identifier, and every process is passed this identifier as an argument. 
+In the SKA algorithm, every node has two processes which have shared variables. This style requires different levels of variable access, i.e. variables that can be accessed by several processes (meaning it is not local), but not by all processes (meaning it is not global). Since only global and local variables exist in promela, the model uses global variables for these shared variables. The global variables are seen perceived to belong to a node, and must only be accessed by processes within that node. To ensure this, every node has a node identifier, and every process is passed this identifier as an argument. 
 
 The convention is, that for every shared variable, an array of those variables are created - one for each node. The $i$:th array cell belongs to node $i$, and is the only cell in the array that processes of node $i$ may access.
 
@@ -161,62 +161,66 @@ To add a new value $n$ to the queue, it must first be checked that the value is 
 To remove the top value from the queue, the opposite is done. The value $n$ is read from the channel \texttt{ch}, and \texttt{inQ[n]} is set to false, indicating that the value $n$ is not in the queue.
 
 \subsection{Messages}
+Messages in promela can be sent using the built-in channel datatype (\texttt{chan}). There are different types of messages being sent, PRIVILEGE and REQUEST. To model this, new datatypes were defined as follows;
 
+\begin{lstlisting}
+typedef REQUEST{
+  chan ch = [N] of {byte, byte};
+}
+
+typedef PRIVILEGE {
+  chan ch = [N] of {Queue, Array};
+}
+
+\end{lstlisting}
+
+
+In the model, a \texttt{REQUEST} is created for each node. When a node $i$ requests the privilege with a request identifier $n$, it will write the values $(i,n)$ to the REQUEST channel of each process other than its own. As only one process has the privilege at any time, only one instance of \texttt{PRIVILEGE} needs be created. When a node$i$ wants to send the privilege to another node $j$, node $i$ will write its current Queue and its current LN-array to the \texttt{PRIVILEGE} channel.
+
+Since the privilege channel can be read by any node, there need be a way to determine which process is to read this channel. This is solved by a global array \texttt{havePrivilege[N]}, that is set to false for all indices except of that belonging to the current holder of the privilege. When the process $i$ above has sent its message on the channel, it will set \texttt (havePrivilege[i]) to false and \texttt (havePrivilege[j]) to true. This indicates to process $j$ that it can read the PRIVILEGE channel.
+
+REPLY messages are implemented as a regular channel, writing and reading to the channel correspond to sending and receiving, and the values are of no importance.
 
 \subsection{Event Handling}
-This part should explain why P2 is waiting in a "busy" loop. I.e., such functions are made to avoid busy loops -> loops are not busy in promela -> doesn't matter that we make busy loops.
+The process P2 (and in SKAM also P3) is to be ran when a message is received. This indicates a type of event handler that does not exist in promela. To overcome this problem, we first note that the strength in using a event handler is that it does not rely on \emph{busy waiting}, i.e. a loop that continuously checks whether a certain predicate is true before it continues. In a classic programming language such a C, busy waiting requires much processing power. In promela though, an if-statement or a loop for which no predicate is true will always wait until the predicate is true without using busy waiting. This means that busy waiting in promela is not at all "busy", and therefore  process P2 can be implemented as a loop with the predicate \texttt{nempty(REQUESTING[i])}.
 
-\section{Algorithms}
+It is easy to see that the loop will be run once for each message received, and since Spin does not always execute the loop as soon as it is possible, arbitrarily long "time" may pass until a request is actually processed. On the other hand, messages can only be received in the order they are sent whereas in reality a message can be delayed without affecting other messages. To solve this issue, the loop can be extended with the non-deterministic choice of reading a message and write it back to the end of the queue, in effect delaying the message.
 
-\subsection{General outline}
+
+\section{Properties as LTL-Formulae}
+Due to the request identifier numbers, the SKA algorithm has the disadvantage of unboundedness, meaning that the state space of the model is infinite. There are techniques to overcome these problem, for example to only check the validity of properties within a finite portion of the infinite transition system. Another solution is to model an abstraction of the algorithm, in order to bound the state space (using the fact that the actual request number is not interesting, only whether it is smaller than some other value or not).
+
+This disadvantage was realized by the authors, and was the motive behind the SKAM algorithm. In this paper, only the SKAM algorithm was checked for the properties below. Although the results cannot be claimed to also reflect the behavior of the SKA algorithm, this is highly probable due to the similarities between the algorithms.
+
+\subsection{Deadlock Freedom}
+With the spin model checker, deadlocked states are considered to be erroneous states and are included in a standard set of checks run by spin. Thus no extra effort is required to determine the absence of such states, as it will be done automatically unless the model checker is not told to ignore invalid end states. Deadlock freedom can also be shown explicitly by checking the LTL-formula \texttt{[]!timeout}. \texttt{timeout} is a predefined global read-only name in the promela language, and is true only if no active process is able to proceed.
+
+-- result section should mark 1. It is free from non-progress paths, and 2. this result is actually bigger than deadlock freedom, showing deadlock freedom and more --
+
+\subsection{Starvation Freedom}
+Starvation freedom is the property that no node is consistently over run by the other processes, i.e. every process will get its turn eventually. This is a liveness property, and needs some degree of fairness to be checked for situations that are reasonable. For example, a node that never requests to enter the critical section will never enter its critical section. Using fairness properties, this kind of irrelevant examples can be excluded. Fairness assumptions can easily be expressed in LTL, in particular it can be expressed that if a process $n_i$ wants to enter its critical section continuously (that is weak fairness), it will always be able to eventually: \texttt{<>[]requesting[i] -> []<>havePrivilege[i]}.
+
+
+\subsection{Mutual Exclusion}
+Mutual exclusion is the property that at most one node can be executing critical code at the same time. In promela, LTL formula can use built-in \emph{labels} to check properties such as \texttt{[]!(P1[0]@critSection \&\& P1[1]@critSection)}. Another way to check for mutual exclusion is to add a shared variable, which is increased by one each time a process enters the critical section, and decreased by one each time it leaves the critical section. The LTL formula to be checked is then \texttt{[]counter < 2}.
+
+\subsection{Freedom of Unnecessary Delay}
+This describes the property that a process that wishes to enter its critical section must not be delayed unless another process is already in the critical section. In contrast to the terms \emph{Starvation freedom} and \emph{deadlock} that are well-defined term, it is unclear what is to be considered \"Unnecessary\" delay. With a rigid definition of \"Unnecessary\", this property is trivially false - a token-based algorithm must at least wait for the token (i.e. the privilege). On the other hand, a too tolerant definition would make the property trivially true - if a process needs to wait, then surely waiting is necessary.
+
+HOW DO I DEFINE IT THEN?
 
 \section{Results}
+\subsection{Deadlock freedom}
 
-
-\section{Discussion}
-
+\begin{dot2tex}[neato,options=-tmath]
+  digraph G {
+  node [shape="circle"];
+  a_1 -> a_2 -> a_3 -> a_4 -> a_1;
+}
+\end{dot2tex}
 
 
 \section{references}
-\small
-\begin{enumerate}
-\item
-\label{ref:cgal}
-Ron Wein, Efi Fogel, Baruch Zukerman, and Dan Halperin
-
-CGAL manual chapter 20, 2D Arrangements
-
-http://www.cgal.org/Manual/3.3/doc\_html/cgal\_manual/Arrangement\_2/Chapter\_main.html
-
-\item
-\label{ref:blocking}
-O. Aichholzer, R. Fabila-Monroy, T. Hackl, M. van Kreveld, A. Pilz, P. Ramos, und B. Vogtenhuber
-
-Blocking Delaunay Triangulations. 
-
-Proc. Canadian Conference on Computational Geometry, CCCG 2010, Winnipeg, August 9/11, 2010. 
-
-\end{enumerate}
-
-
-
-\subsection{images}
-\begin{itemize}
-\item
-Delaunay circumcircles, GNU Free Documenation Licence, N\"u es
-
-http://commons.wikimedia.org/wiki/File:Delaunay\_circumcircles.png
-
-\item
-Delaunay triangulation 1-3, public domain, user Capheiden 
-
-http://upload.wikimedia.org/wikipedia/de/1/17/Voronoi-Delaunay.svg
-
-http://upload.wikimedia.org/wikipedia/de/4/48/Voronoi-Diagramm.svg
-
-http://upload.wikimedia.org/wikipedia/commons/1/1f/Delaunay-Triangulation.svg
-\end{itemize}
-
 
 
 \newpage
@@ -227,14 +231,12 @@ const I: Integer;		(* the identifier of this node *)
 	var HavePrivilege, Requesting:		bool;
 	j, n:	 	integer;
 	Q: 		queue of integer;
-	RN, LN: 	array[l . . N] of integer;
+	RN, LN:	array[l . . N] of integer;
 
 	(* The initial values of the variables are:
 	HavePrivilege = true in node 1, false in all other nodes;
-	Requesting = false;
-	Q = empty;
-	RN[j] = -1, j = 1,2, . . . , N;
-	LN[j] = -1, j = 1,2,. . . , N; *)
+	Requesting = false; Q = empty;
+	RN[j] = -1, j = 1,2, . . . , N;  	LN[j] = -1, j = 1,2,. . . , N; *)
 
 	procedure Pl;
 	begin
