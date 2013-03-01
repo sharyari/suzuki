@@ -13,9 +13,39 @@
 
 \usepackage{dot2texi}
 \usepackage{tikz}
-\usetikzlibrary{shapes,arrows}
+
+\usetikzlibrary{calc,trees,positioning,arrows,chains,shapes.geometric,%
+    decorations.pathreplacing,decorations.pathmorphing,shapes,%
+    matrix,shapes.symbols}
 
 
+\tikzset{
+>=stealth',
+  punktchain/.style={
+    rectangle, 
+    rounded corners, 
+    % fill=black!10,
+    draw=black, very thick,
+    text width=10em, 
+    minimum height=3em, 
+    text centered, 
+    on chain},
+  line/.style={draw, thick, <-},
+  element/.style={
+    tape,
+    top color=white,
+    bottom color=blue!50!black!60!,
+    minimum width=8em,
+    draw=blue!40!black!90, very thick,
+    text width=10em, 
+    minimum height=3.5em, 
+    text centered, 
+    on chain},
+  every join/.style={->, thick,shorten >=1pt},
+  decoration={brace},
+  tuborg/.style={decorate},
+  tubnode/.style={midway, right=2pt},
+}
 
 \usepackage{caption}
 \DeclareCaptionFont{white}{\color{white}}
@@ -120,7 +150,7 @@ A requesting node will wait until it receives a PRIVILEGE message, before access
 
 In process P2 REQUEST(i,n) messages are received. The array RN is updated, so that the corresponding entry RN[i] is set to n. If the node currently holding the privilege is not itself waiting for the privilege, it will forward the privilege to $node_i$ by sending a PRIVILEGE(Q, LN) message.
 
-The pseudo-code proposed in the original paper is listed in \hyperref[sec:SKA]{Appendix A}.
+The pseudo-code proposed in the original paper is listed in \hyperref[SKA]{Appendix A}.
 
 \subsection{Suzuki and Kasami's modified Algorithm}
 The SKA algorithm has the disadvantage of request identifier numbers being unbounded. In a modified version of the SKA algorithm (henceforth abbreviated SKAM), Suzuki and Kasami propose a slightly changes to the above algorithm in order to bound the request identifiers by a value L but with the cost of additional message exchanges.
@@ -192,6 +222,8 @@ Due to the request identifier numbers, the SKA algorithm has the disadvantage of
 
 This disadvantage was realized by the authors, and was the motive behind the SKAM algorithm. In this paper, only the SKAM algorithm was checked for the properties below. Although the results cannot be claimed to also reflect the behavior of the SKA algorithm, this is highly probable due to the similarities between the algorithms.
 
+All checking was done with models with two and three processes, and a value of L=2 for the SKAM model. WHY CAN A MODEL WITH FOUR PROCESSES NOT EXHIBIT MORE BEHAVIOURS THAN A MODEL WITH THREE PROCESSES?
+
 \subsection{Deadlock Freedom}
 With the spin model checker, deadlocked states are considered to be erroneous states and are included in a standard set of checks run by spin. Thus no extra effort is required to determine the absence of such states, as it will be done automatically unless the model checker is not told to ignore invalid end states. Deadlock freedom can also be shown explicitly by checking the LTL-formula \texttt{[]!timeout}. \texttt{timeout} is a predefined global read-only name in the promela language, and is true only if no active process is able to proceed.
 
@@ -211,14 +243,22 @@ HOW DO I DEFINE IT THEN?
 
 \section{Results}
 \subsection{Deadlock freedom}
+The SKAM algorithm was shown not to be free from deadlocks, but the deadlock is directly related to the modifications extending SKA to SKAM, and would not be present in the SKA algorithm. The problem can occur when a process $P1_n$ requests the privilege for the L:th time; after receiving the privilege process must wait additionally until the other processes have sent REPLY messages. The indicator of having received replies is a counter \texttt{replyCount}, which is set again to zero when the replies have been received. The deadlock can occur in the next iteration if none of the other processes have requested. If this happens, the process $P1_n$ can request again, and does not need to increase increase its current request number. As the request number is unchanged, the process must again wait for the REPLY messages of the other processes, but these have already been sent. This marks a deadlock state, where the process holding the privilege is waiting infinitely, and no other process can get the privilege.
 
-\begin{dot2tex}[neato,options=-tmath]
-  digraph G {
-  node [shape="circle"];
-  a_1 -> a_2 -> a_3 -> a_4 -> a_1;
-}
-\end{dot2tex}
+This problem can be solved rather simply, by adding a local variable \texttt{nreceived} to the process P1. The variable is set to 0 whenever a request is made, but said to 1 when all replies have been received. When the process P1 iterates again after its L:th request, it will only wait for replies if the indicator \texttt{nreceived} is not set.
 
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=1.1\textwidth]{diagramboth.pdf}
+ \caption[Close up of \textit{Hemidactylus} sp.]
+   {Simplified flow chart of the SKAM algorithm (left). Flow chart after extending the model with a variable \texttt{nreceived}}
+\end{center}
+\end{figure}
+
+Using this small extension the model was shown to be free from deadlocks. All further model checking results are based on the deadlock-free model.
+
+\subsection{Starvation freedom}
 
 \section{references}
 

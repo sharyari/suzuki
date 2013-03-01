@@ -1,4 +1,4 @@
-#define N 2
+#define N 3
 #define L 2
 #define _empty(_ch) (len(_ch) == 0)
 #define _nempty(_ch) (len(_ch) != 0)
@@ -53,7 +53,7 @@ proctype P1(byte i){
 	 :: else ->
 	    atomic {
 	      RN[i].ind[i] = (RN[i].ind[i]+1) % L;
-	      //nreceived=0;	    
+	      nreceived=0;	    
 	      do
 		:: else ->  break;
 		:: c == i ->  c++; skip;
@@ -82,11 +82,11 @@ crit:
 	 LN[i].ind[i] = RN[i].ind[i];
        }
        if
-	 :: (RN[i].ind[i] == L-1) -> //&& !nreceived->
+	 :: (RN[i].ind[i] == L-1) && !nreceived->
 	    if
 	      :: (replycount[i] == N-1) ->
 		 replycount[i] = 0;
-		// nreceived=1;
+		 nreceived=1;
 	    fi;
 	 :: else -> skip;
        fi;
@@ -220,9 +220,9 @@ end:
 
 
 ltl critSec {
-    []!timeout
+//    []!timeout
 //  <>[]np_ //noprog
-// <>[]r1 -> []<>hP1  // live or no prog??
+  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0 && <>[]r2 -> []<>hP2) // live or no prog??
 //  []<>hP1 && []<>hP2 && []<>hP0
 //   [](counter < 2) //safety
 }
