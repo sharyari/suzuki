@@ -1,4 +1,4 @@
-\documentclass[a4paper,12pt]{article}
+\documentclass[a4paper,12pt]{llncs}
 \usepackage{fullpage}
 \usepackage[british]{babel}
 \usepackage[T1]{fontenc}
@@ -6,7 +6,7 @@
 \usepackage{amssymb}
 \usepackage[T1]{fontenc}
 \usepackage[latin1]{inputenc} 
-\usepackage{amsthm} \newtheorem{theorem}{Theorem}
+%\usepackage{amsthm} \newtheorem{theorem}{Theorem}
 \usepackage{color}
 \usepackage{float}
 
@@ -82,6 +82,12 @@
 \DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
 \DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
 
+\usepackage{url}
+\urldef{\mailsa}\path|sharyari@gmail.com |    
+\newcommand{\keywords}[1]{\par\addvspace\baselineskip
+\noindent\keywordname\enspace\ignorespaces#1}
+
+
 \usepackage{tikz} \usetikzlibrary{trees}
 \usepackage{hyperref}  % should always be the last package
 
@@ -111,22 +117,25 @@
 \newcommand{\Union}{\cup}
 \usetikzlibrary{positioning,shapes,shadows,arrows}
 
+\pagestyle{empty}
 
 \title{\textbf{WHAT's THE TITLE?}}
 
-\author{Jonathan Sharyari}  % replace by your name(s)
+\author{Jonathan Sharyari}
 
-%\date{Month Day, Year}
-\date{\today}
-
+\institute{Freie Universit{\"a}t Berlin, Computer Science Department\\
+Takustra{\ss}e 9. 14195 Berlin, Germany\\
+\mailsa
+}
 \begin{document}
-
 \maketitle
 
-\begin{figure}
-\section*{\large Abstract}
-In 1985, Suzuki and Kasami presented a distributed algorithm for mutual exclusion. In this paper (?), the claim of mutual exclusion, deadlock and starvation freedom are tested using model checking techniques. The conclusion...
-\end{figure}
+%\begin{figure}
+%\section*{\large Abstract}
+\begin{abstract}
+In 1985, Suzuki and Kasami presented two distributed algorithms for mutual exclusion. In this paper, the claim of mutual exclusion, deadlock and starvation freedom are tested using model checking techniques. Using the spin model checker, a counterexample to deadlock freedom was found for one of the algorithms, and a modification is proposed that guarantees deadlock freedom.
+\end{abstract}
+%\end{figure}
 \newpage
 
 \section{Introduction}
@@ -143,6 +152,7 @@ Each of the N nodes between which mutual exclusion is to be realized runs two pr
 
 The array RN holds the latest received request identifier for each other node. Similarly, LN holds the request identifier of the latest carried out request of all the other nodes, of which the node has been notified. Since the algorithm is distributed, the local arrays RN and LN are not the same for each node, and for each node represent only the information of which the node has been informed.
 The local queue Q holds the nodes that are currently requesting the privilege, in the order the requests have been received.
+
 
 When a node $node_i$ wants to enter its critical section with its main process P, it needs to have the privilege to do so. In case the node already holds the privilege, it enters the critical section directly, without informing the other processes or updating the arrays RN and LN. Otherwise a REQUEST(i, n) message is sent to all other nodes, where i is the nodes identifier (index) and n is the request identifier.
 
@@ -250,18 +260,35 @@ This problem can be solved rather simply, by adding a local variable \texttt{nre
 
 \begin{figure}[!ht]
 \begin{center}
-\includegraphics[width=1.1\textwidth]{diagramboth.pdf}
+\includegraphics[width=\textwidth]{diagramboth.pdf}
  \caption[Close up of \textit{Hemidactylus} sp.]
    {Simplified flow chart of the SKAM algorithm (left). Flow chart after extending the model with a variable \texttt{nreceived}}
 \end{center}
 \end{figure}
 
-Using this small extension the model was shown to be free from deadlocks. All further model checking results are based on the deadlock-free model.
+Using this small extension the model was shown to be free from deadlocks. All further model checking results are based on the deadlock-free model. Note that it has been assumed that a nodes execute infinitely often (at least the node holding the privilege); without this non-termination assumption, a deadlock might occur  \cite{OgataSAL}\cite{OgataMaude}.
 
-\subsection{Starvation freedom}
+\subsection{Remaining Properties}
+The results show that mutual exclusion, starvation freedom and freedom of unnecessary delay all hold for the SKAM algorithm. 
+
+
+\section{Discussion}
+????
 
 \section{references}
+\begin{thebibliography}{4}
 
+\bibitem{OgataSAL}Ogata, K., Futatsugi, K.: Analysis of the Suzuki-Kasami Algorithm with SAL Model Checkers. In: 
+Proceedings of the 2005 The Fifth International Conference on Computer and Information Technology (CIT 05)
+
+\bibitem{OgataMaude} Ogata, K., Futatsugi, K.: Analysis of the Suzuki-Kasami Algorithm with the Maude Model Checker. In: 
+Proceedings of the 12th Asia-Pacific Software Engineering Conference (APSEC 05)
+
+\bibitem{Suzuki} Suzuki, I., Kasami, T.: A Distributed Mutual Exclusion Algorithm. In: 
+ACM Transactions on Computer Systems, Vol. 3, No. 4, November 1985, Pages 344-349.
+
+
+\end{thebibliography}
 
 \newpage
 \label{ref:SKA}
