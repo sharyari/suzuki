@@ -220,9 +220,9 @@ end:
 
 
 ltl critSec {
-    []!timeout
+//    []!timeout
 //  <>[]np_ //noprog
-//  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0 && <>[]r2 -> []<>hP2) // live or no prog??
+  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0 && <>[]r2 -> []<>hP2) // live or no prog??
 //  []<>hP1 && []<>hP2 && []<>hP0
 //   [](counter < 2) //safety
 }
