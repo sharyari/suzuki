@@ -1,6 +1,4 @@
 #define N 3
-#define _empty(_ch) (len(_ch) == 0)
-#define _nempty(_ch) (len(_ch) != 0)
 
 typedef Arraychan {
   chan ch = [N] of {byte};
@@ -41,9 +39,7 @@ proctype P1(byte i){
   byte c=0;
   do
     :: 1 ->
-       d_step{
-	 requesting[i] = true; c=0;
-       }
+       d_step{ requesting[i] = true; c=0; }
        if
 	 :: havePrivilege[i] ->	skip;	    
 	 :: else ->
@@ -141,11 +137,12 @@ init {
   }
 }
 
-ltl critSec{
-  []!(live[1] && live[0])
+ltl critSec{ 
+//	!timeout U (RN[0].ind[0] > 2 || RN[1].ind[1] > 2 || RN[2].ind[2] > 2)
+//  []!(live[1] && live[0])
   //!([]<>live[1])
-  //  !([]<>(havePrivilege[1]) &&  []<>(havePrivilege[0]) &&  []<>(havePrivilege[2]))
+    (requesting[0] -> <>(havePrivilege[0])) U (RN[0].ind[0] > 1)
 //  [](RN[1].ind[1] < 10 -> <>havePrivilege[1])
-  //  []!(counter > 1)
+//    (counter < 2) U (RN[0].ind[0] > 2 || RN[1].ind[1] > 2 || RN[2].ind[2] > 2)
 //  []!(RN[0].ind[0] == 5 && RN[1].ind[1] == 5)// && RN[0].ind[2] > 2)
 }

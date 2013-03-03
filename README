@@ -2,4 +2,8 @@ The file suzuki.pml corresponds to the SKA algorithm and suzuki2.pml to the SKAM
 
 To test the suzuki2.pml file, uncomment the ltl-property to be checked and run either the script "safety" (for safety properties, i.e. deadlock freedom) or "live" (for other properties). The memory limit must be set to reflect the available and desired amount on the system used.
 
+To test the version of the algorithm exhibiting a deadlock, simply change the line:
+	 :: (RN[i].ind[i] == L-1) && !nreceived->
+to:
+	 :: (RN[i].ind[i] == L-1) ->
 

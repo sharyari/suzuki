@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./spin -a suzuki2.pml
-cc -DVECTORSZ=4096 -DCOLLAPSE -DNP -DMEMLIM=2000 -DNFAIR=4 -o pan pan.c
+./spin -a suzuki.pml
+cc -DVECTORSZ=4096 -DCOLLAPSE -DNP -DMEMLIM=1200 -DNFAIR=3 -o pan pan.c
 ./pan -m10000000 -l -f
 

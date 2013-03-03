@@ -1,6 +1,6 @@
 #!/bin/bash
 
 spin -a suzuki2.pml
-cc -DSAFETY -DMEMLIM=2000 -o pan pan.c
-./pan -m2500000 
+cc -DSAFETY -DCOLLAPSE -DMA=28 -DMEMLIM=1100 -o pan pan.c
+./pan -m10000000 
 

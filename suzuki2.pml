@@ -3,54 +3,54 @@
 #define _empty(_ch) (len(_ch) == 0)
 #define _nempty(_ch) (len(_ch) != 0)
 
-typedef Arraychan {
-  chan ch = [N] of {short};
-}
-
+/* Request message type */
 typedef REQUEST{
   chan ch = [N] of {byte, short};
 }
 
+/* Used to create an array of arrays */
 typedef Array{
   short ind[N];
 }
 
+/* Queue datatype */
 typedef Queue {
   chan ch = [N] of {short};
   bool inQ[N];
 }
 
+/* PRIVILEGE message type */
 typedef PRIVILEGE {
   chan ch = [N] of {Queue, Array};
 }
 
+/* Reply channel */
 chan reply[N] = [N] of {bool};
 
-hidden short r=0;
-Array RN[N]; // "local" copies of RN and LN, have to be visible for both P1 and P2
+
+Array RN[N]; /* "local" copies of RN and LN, have to be visible for both P1 and P2 */
 Array LN[N];
-bool havePrivilege[N]; // True when ones own is set to true. Only someone with privilege alters this
-bool requesting[N]; //True when a process is requesting
-
-byte replycount[N];
-
-short counter;
+bool havePrivilege[N]; /* True when ones own is set to true. Only someone with privilege alters this */
+bool requesting[N]; /* True when a process is requesting */
+byte replycount[N]; /* Reflects the number of reply messages received */
+short counter; /* Used when checking for mutual exclusion */
 
 Queue Q[N];
 
-PRIVILEGE priv;
-REQUEST req[N];
+PRIVILEGE priv; /* The privilege channel, only the current privilege-holder may read this */
+REQUEST req[N]; /* Request channels */
 
 
 proctype P1(byte i){
-  byte c;
-  bool nreceived=0;
+  byte c; /* Counter */
+  bool nreceived=0; /* This is set to one when N-1 reply messages have been received */
   do
     :: 1 ->
        d_step{c=0; requesting[i] = true;}
        if
-	 :: havePrivilege[i] ->	    skip;	    
+	 :: havePrivilege[i] ->	 skip;	
 	 :: else ->
+	    /* Request the privilege */
 	    atomic {
 	      RN[i].ind[i] = (RN[i].ind[i]+1) % L;
 	      nreceived=0;	    
@@ -60,29 +60,30 @@ proctype P1(byte i){
 		:: c < N && c != i ->
 		   req[c].ch!i, RN[i].ind[i]; c++;
 	      od;	    }
-wait:	    
+	    /* Wait for privilege */
 	    if
 	      :: havePrivilege[i] ->
 		 priv.ch?Q[i], LN[i];
 	    fi;
        fi;
 progress:   
-//accept:
+    d_step {       
        if
 	 :: nempty(priv.ch) ->
 	    priv.ch?Q[i], LN[i];
 	 :: empty(priv.ch) ->
 	    skip;
        fi;
-
        
-crit:  
-       d_step {
+
 	 counter++; // debugging
 	 LN[i].ind[i] = RN[i].ind[i];
        }
-       if
-	 :: (RN[i].ind[i] == L-1) && !nreceived->
+
+	atomic {
+       /* Wait if this is the L:th round, and replies have not allready been received */
+       if /* manipulate the below line to reproduce the found deadlock */
+	 :: (RN[i].ind[i] == L-1) && !nreceived-> 
 	    if
 	      :: (replycount[i] == N-1) ->
 		 replycount[i] = 0;
@@ -90,6 +91,8 @@ crit:
 	    fi;
 	 :: else -> skip;
        fi;
+crit:  }
+       /* Add requesting processes to the queue */
        d_step {
 	 c=0;
 	 do
@@ -105,12 +108,13 @@ crit:
 	      c++;
 	 od;
 
+	 /* If any process is requesting, send the privilege to that process */
 	 if
 	   :: nempty(Q[i].ch) ->
-	      havePrivilege[i] = false;
 	      Q[i].ch?c;
 	      Q[i].inQ[c]=false;
 	      priv.ch!Q[i], LN[i];
+	      havePrivilege[i] = false;
 	      havePrivilege[c] = true;
 	   :: empty(Q[i].ch) ->
 	      skip;
@@ -121,17 +125,17 @@ crit:
 }
 
 proctype P2(byte i){
-  chan rreq = req[i].ch;
-  xr rreq;
-  byte reqee, reqN;
+  chan rreq = req[i].ch; 
+  xr rreq; /* P2 is the only process reading from this channel */
+  byte reqee, reqN; /* (node identifier, request identifier) */
   byte requestcount[N];
   do    
-    :: nempty(req[i].ch) ->
+/*    :: nempty(req[i].ch) ->
 progressdummy:
        d_step{
 	 rreq?reqee,reqN;
 	 req[i].ch!reqee,reqN;
-       }
+       }*/
     :: nempty(req[i].ch) ->
        d_step {
 	 rreq?reqee,reqN;
@@ -196,18 +200,18 @@ init {
        i++;
     :: else -> break;
   od;
-  
+  i=0;
   havePrivilege[0]=true;
   atomic{
     do
-      :: r < N ->
-	 run P1(r);  // unreliable processes
-	 run P2(r);
-	 run P3(r);
-	 r++;
+      :: i < N ->
+	 run P1(i);  // unreliable processes
+	 run P2(i);
+	 run P3(i);
+	 i++;
       :: else -> break;
     od;
-    r=0;
+    i=0;
   }
 end: 
 }
@@ -220,9 +224,9 @@ end:
 
 
 ltl critSec {
-//    []!timeout
+    []!timeout
 //  <>[]np_ //noprog
-  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0 && <>[]r2 -> []<>hP2) // live or no prog??
+//  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0 && <>[]r2 -> []<>hP2) // live or no prog??
 //  []<>hP1 && []<>hP2 && []<>hP0
 //   [](counter < 2) //safety
 }
