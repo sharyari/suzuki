@@ -1,4 +1,4 @@
-#define N 3
+#define N 2
 #define L 2
 #define _empty(_ch) (len(_ch) == 0)
 #define _nempty(_ch) (len(_ch) != 0)
@@ -47,11 +47,11 @@ proctype P1(byte i){
   do
     :: 1 ->
        d_step{c=0; requesting[i] = true;}
+	atomic {
        if
 	 :: havePrivilege[i] ->	 skip;	
 	 :: else ->
-	    /* Request the privilege */
-	    atomic {
+	    /* Request the privilege */	    
 	      RN[i].ind[i] = (RN[i].ind[i]+1) % L;
 	      nreceived=0;	    
 	      do
@@ -59,15 +59,17 @@ proctype P1(byte i){
 		:: c == i ->  c++; skip;
 		:: c < N && c != i ->
 		   req[c].ch!i, RN[i].ind[i]; c++;
-	      od;	    }
+	      od;	    
 	    /* Wait for privilege */
 	    if
 	      :: havePrivilege[i] ->
 		 priv.ch?Q[i], LN[i];
 	    fi;
        fi;
+}
 progress:   
-    d_step {       
+    d_step {
+      /* Read the queue if needed */
        if
 	 :: nempty(priv.ch) ->
 	    priv.ch?Q[i], LN[i];
@@ -130,7 +132,9 @@ proctype P2(byte i){
   byte reqee, reqN; /* (node identifier, request identifier) */
   byte requestcount[N];
   do    
+/* This could be used to simulate processes being received out of order */
 /*    :: nempty(req[i].ch) ->
+
 progressdummy:
        d_step{
 	 rreq?reqee,reqN;
@@ -140,6 +144,7 @@ progressdummy:
        d_step {
 	 rreq?reqee,reqN;
 	 requestcount[reqee]++;
+	 /* If this is the Lth request, send a REPLY message*/
 	 if
 	   :: requestcount[reqee] == L ->
 	      reply[reqee]!1;
@@ -147,6 +152,7 @@ progressdummy:
 	   :: else -> skip;
 	 fi;
 
+	 /* Chose the right value of RN */
 	 if
 	   :: requestcount[reqee] == 1 ->
 	      RN[i].ind[reqee] = reqN;
@@ -158,6 +164,7 @@ progressdummy:
 		   skip;
 	      fi;
 	 fi;
+	 /* If P1 is not requesting and another process does, send privilege*/
 	 if
 	   :: havePrivilege[i] && !requesting[i] && RN[i].ind[reqee] == (LN[i].ind[reqee]+1) % L ->
 	      priv.ch!Q[i], LN[i];
@@ -174,11 +181,11 @@ proctype P3(short i){
   replycount[i]=0;
   bool trash;
   chan rreply = reply[i];
-  xr rreply;
+  xr rreply; /* P3 is the only process reading from this channel */
   do
     :: nempty(rreply) ->
        d_step{
-	 rreply?_;
+	 rreply?_; /* "read" the channel */
 	 replycount[i]++;
        }
   od;
@@ -215,6 +222,8 @@ init {
   }
 end: 
 }
+
+
 #define hP0 havePrivilege[0]
 #define hP1 havePrivilege[1]
 #define hP2 havePrivilege[2]
@@ -223,10 +232,24 @@ end:
 #define r2 requesting[2]
 
 
-ltl critSec {
-    []!timeout
-//  <>[]np_ //noprog
-//  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0 && <>[]r2 -> []<>hP2) // live or no prog??
-//  []<>hP1 && []<>hP2 && []<>hP0
-//   [](counter < 2) //safety
+/* Uncomment to check Mutual exclusion */
+/*
+ltl mutex {
+  [](counter < 2)
 }
+*/
+
+/* Uncomment to check for deadlock freedom */
+/*
+ltl deadlock {
+  []!timeout
+}
+*/
+
+/* Uncomment to check for starvation freedom */
+
+ltl starvation {
+  [](<>[]r1 -> []<>hP1 && <>[]r0 -> []<>hP0) // && <>[]r2 -> []<>hP2)
+}
+
+ 
