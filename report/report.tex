@@ -125,7 +125,9 @@ In 1985, Suzuki and Kasami presented two distributed algorithms for mutual exclu
 \section{Introduction}
 Model checking is the process of automatically verifying the correctness of a system description with respect to its specifications, by examining a model corresponding to the system. The result of model checking with respect to some property is in general a certificate of correctness, or a trail that does not satisfy the property, i.e. a counterexample.
 
-There are many tools for model checking available, with different approaches to model checking and with different strengths and weaknesses. The SPIN Model checker (typically written Spin) is a widely used tool for model checking distributed and concurrent systems. The Spin model checker was used mainly while both the tested pseudo code and the spin modelling language (promela) has a syntax close to that of the C programming language; ------the line I want to write here-----.
+There are many tools for model checking available, with different approaches to model checking and with different strengths and weaknesses. The SPIN Model checker (typically written Spin) is a widely used tool for the model checking of distributed and concurrent systems.
+
+The Spin model checker was used mainly while both the tested pseudo code and the spin modelling language (promela) has a syntax close to that of the C programming language, thus making it easier to ensure that the model in fact corresponds to the algorithm of interest.
 
 
 \subsection{Suzuki and Kasami's Algorithm}
@@ -140,7 +142,7 @@ The local queue Q holds the nodes that are currently requesting the privilege, i
 
 When a node $node_i$ wants to enter its critical section with its main process P1, it needs to have the privilege to do so. In case the node already holds the privilege, it enters the critical section directly, without informing the other processes and does \emph{not update the arrays RN and LN}. Otherwise a \texttt{REQUEST(i, n)} message is sent to all other nodes, where i is the nodes identifier (index) and n is the request identifier.
 
-A requesting node will wait until it receives a \texttt{PRIVILEGE} message, before accessing its critical section. When it is done, it updates its queue by appending all the requesting nodes not currently in the queue. Then, a \texttt{PRIVILEGE} is sent to the node first in Q, and that node is removed from the queue.
+A requesting node must wait until it receives a \texttt{PRIVILEGE} message, before accessing its critical section. When it is done, it updates its queue by appending all the requesting nodes not currently in the queue. Then, a \texttt{PRIVILEGE} is sent to the node first in Q, and that node is removed from the queue.
 
 In process P2 \texttt{REQUEST(i,n)} messages are received. The array RN is updated, so that the corresponding entry RN[i] is set to n. If the node currently holding the \texttt{PRIVILEGE} is not itself waiting for the privilege, it will forward the \texttt{PRIVILEGE} to $node_i$ by sending a \texttt{PRIVILEGE(Q, LN)} message.
 
@@ -394,6 +396,8 @@ For the \textsc{ska} algorithm it was shown that the safety properties, mutual e
 
 \section{references}
 \begin{thebibliography}{4}
+\bibitem{Suzuki} Suzuki, I., Kasami, T.: A Distributed Mutual Exclusion Algorithm. In: 
+ACM Transactions on Computer Systems, Vol. 3, No. 4, November 1985, Pages 344-349.
 
 \bibitem{OgataSAL}Ogata, K., Futatsugi, K.: Analysis of the Suzuki-Kasami Algorithm with SAL Model Checkers. In: 
 Proceedings of the 2005 The Fifth International Conference on Computer and Information Technology (CIT 05)
@@ -401,8 +405,7 @@ Proceedings of the 2005 The Fifth International Conference on Computer and Infor
 \bibitem{OgataMaude} Ogata, K., Futatsugi, K.: Analysis of the Suzuki-Kasami Algorithm with the Maude Model Checker. In: 
 Proceedings of the 12th Asia-Pacific Software Engineering Conference (APSEC 05)
 
-\bibitem{Suzuki} Suzuki, I., Kasami, T.: A Distributed Mutual Exclusion Algorithm. In: 
-ACM Transactions on Computer Systems, Vol. 3, No. 4, November 1985, Pages 344-349.
+
 
 
 \end{thebibliography}
